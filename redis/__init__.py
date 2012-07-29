@@ -18,6 +18,8 @@ from redis.exceptions import (
 
 __version__ = '2.4.12'
 VERSION = tuple(map(int, __version__.split('.')))
+__version__ += '-scripting'
+VERSION = VERSION + ('scripting',)
 
 __all__ = [
     'Redis', 'StrictRedis', 'ConnectionPool',
