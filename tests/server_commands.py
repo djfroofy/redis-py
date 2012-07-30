@@ -1243,6 +1243,22 @@ class ServerCommandsTestCase(unittest.TestCase):
         expected = '\x00\x03foo\x06\x00\xe5\xa4Q[\xb8\x94\x86\x04'
         self.assertEquals(actual, expected)
 
+    def test_restore(self):
+        "RESTORE poperly sets key with value"
+        serialized_value = '\x00\x03foo\x06\x00\xe5\xa4Q[\xb8\x94\x86\x04'
+        self.client.restore('a', serialized_value)
+        actual = self.client['a']
+        self.assertEquals(actual, 'foo')
+        ttl = self.client.ttl('a')
+        self.assertEquals(ttl, None)
+
+    def test_restore_with_ttl(self):
+        "RESTORE ttl is set in milliseconds on key"
+        serialized_value = '\x00\x03foo\x06\x00\xe5\xa4Q[\xb8\x94\x86\x04'
+        self.client.restore('a', serialized_value, ttl=10000)
+        ttl = self.client.ttl('a')
+        self.assert_(1 < ttl <= 10)
+
     ## BINARY SAFE
     # TODO add more tests
     def test_binary_get_set(self):
