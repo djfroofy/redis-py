@@ -8,6 +8,10 @@ from distutils.version import StrictVersion
 from redis.client import parse_info
 from redis.exceptions import ResponseError, NoScriptError
 
+r = redis.Redis(host='localhost', port=6379)
+redis_version = [int(n) for n in r.info()['redis_version'].split('.')]
+del r
+
 
 TEST_SCRIPT = """if redis.call("exists",KEYS[1]) == 1
 then
@@ -59,8 +63,8 @@ class ServerCommandsTestCase(unittest.TestCase):
         self.assertEquals(self.client.get('byte_string'), byte_string)
         self.assertEquals(self.client.get('integer'), str(integer))
         self.assertEquals(
-                self.client.get('unicode_string').decode('utf-8'),
-                unicode_string)
+            self.client.get('unicode_string').decode('utf-8'),
+            unicode_string)
 
     def test_getitem_and_setitem(self):
         self.client['a'] = 'bar'
@@ -135,6 +139,12 @@ class ServerCommandsTestCase(unittest.TestCase):
         self.assertEquals(self.client['a'], 'a1')
         self.assert_(self.client.append('a', 'a2'), 4)
         self.assertEquals(self.client['a'], 'a1a2')
+
+    def test_getrange(self):
+        self.client['a'] = 'foo'
+        self.assertEquals(self.client.getrange('a', 0, 0), 'f')
+        self.assertEquals(self.client.getrange('a', 0, 2), 'foo')
+        self.assertEquals(self.client.getrange('a', 3, 4), '')
 
     def test_decr(self):
         self.assertEquals(self.client.decr('a'), -1)
@@ -1318,10 +1328,7 @@ class ServerCommandsTestCase(unittest.TestCase):
         self.client.set('a', data)
         self.assertEquals(self.client.get('a'), data)
 
-
-    r = redis.Redis(host='localhost', port=6379)
-    version = [int(n) for n in r.info()['redis_version'].split('.')]
-    if version >= [2, 5, 9]:
+    if redis_version >= [2, 5, 9]:
 
         def test_script_load(self):
             """
