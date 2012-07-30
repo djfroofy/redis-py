@@ -1206,6 +1206,13 @@ class Redis(StrictRedis):
             pieces.append(pair[0])
         return self.execute_command('ZADD', name, *pieces)
 
+    ### Key serialization commands ###
+    def dump(self, key):
+        """
+        Return Redis-specific serialization of the value stored at key.
+        """
+        return self.execute_command('DUMP', key)
+
 
 class PubSub(object):
     """

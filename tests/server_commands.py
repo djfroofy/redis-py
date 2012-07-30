@@ -1235,6 +1235,14 @@ class ServerCommandsTestCase(unittest.TestCase):
         self.assertEquals(client.persist('a'), True)
         self.assertEquals(client.ttl('a'), -1)
 
+    ## KEY SERIALIZATION (DUMP/RESTORE)
+    def test_dump(self):
+        "DUMP returns raw byte string with serialized data for key"
+        self.client['a'] = 'foo'
+        actual = self.client.dump('a')
+        expected = '\x00\x03foo\x06\x00\xe5\xa4Q[\xb8\x94\x86\x04'
+        self.assertEquals(actual, expected)
+
     ## BINARY SAFE
     # TODO add more tests
     def test_binary_get_set(self):
