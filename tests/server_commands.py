@@ -8,6 +8,7 @@ from distutils.version import StrictVersion
 from redis.client import parse_info
 from redis.exceptions import ResponseError, NoScriptError
 
+
 r = redis.Redis(host='localhost', port=6379)
 redis_version = [int(n) for n in r.info()['redis_version'].split('.')]
 del r
@@ -19,12 +20,6 @@ then
 else
     return nil
 end"""
-
-
-
-r = redis.Redis(host='localhost', port=6379)
-redis_version = [int(n) for n in r.info()['redis_version'].split('.')]
-del r
 
 
 class ServerCommandsTestCase(unittest.TestCase):
