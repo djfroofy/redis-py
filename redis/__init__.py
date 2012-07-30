@@ -19,8 +19,8 @@ from redis.exceptions import (
 
 __version__ = '2.6.0'
 VERSION = tuple(map(int, __version__.split('.')))
-__version__ += '-scripting'
-VERSION = VERSION + ('scripting',)
+__version__ += '-scripting2'
+VERSION = VERSION + ('scripting2',)
 
 __all__ = [
     'Redis', 'StrictRedis', 'ConnectionPool',
