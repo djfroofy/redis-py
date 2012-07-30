@@ -1254,6 +1254,22 @@ class Redis(StrictRedis):
             pieces.append(pair[0])
         return self.execute_command('ZADD', name, *pieces)
 
+    ### Key serialization commands ###
+    def dump(self, key):
+        """
+        Return Redis-specific serialization of the value stored at key.
+        """
+        return self.execute_command('DUMP', key)
+
+    def restore(self, key, serialized_value, ttl=0):
+        """
+        Create key associated with value obtained by deserializing the provided
+        serialized value. If ttl is 0, the key is created without any expire,
+        otherwise the specified expire time (in milliseconds) is set. Note that
+        the serialized value of a key can be obtained with dump().
+        """
+        return self.execute_command('RESTORE', key, ttl, serialized_value)
+
 
 class PubSub(object):
     """

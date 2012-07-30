@@ -21,6 +21,12 @@ else
 end"""
 
 
+
+r = redis.Redis(host='localhost', port=6379)
+redis_version = [int(n) for n in r.info()['redis_version'].split('.')]
+del r
+
+
 class ServerCommandsTestCase(unittest.TestCase):
 
     def get_client(self, cls=redis.Redis):
@@ -1249,6 +1255,32 @@ class ServerCommandsTestCase(unittest.TestCase):
         self.assertEquals(client.ttl('a'), 10)
         self.assertEquals(client.persist('a'), True)
         self.assertEquals(client.ttl('a'), -1)
+
+    if redis_version >= [2, 5, 9]:
+
+        ## KEY SERIALIZATION (DUMP/RESTORE)
+        def test_dump(self):
+            "DUMP returns raw byte string with serialized data for key"
+            self.client['a'] = 'foo'
+            actual = self.client.dump('a')
+            expected = '\x00\x03foo\x06\x00\xe5\xa4Q[\xb8\x94\x86\x04'
+            self.assertEquals(actual, expected)
+
+        def test_restore(self):
+            "RESTORE poperly sets key with value"
+            serialized_value = '\x00\x03foo\x06\x00\xe5\xa4Q[\xb8\x94\x86\x04'
+            self.client.restore('a', serialized_value)
+            actual = self.client['a']
+            self.assertEquals(actual, 'foo')
+            ttl = self.client.ttl('a')
+            self.assertEquals(ttl, None)
+
+        def test_restore_with_ttl(self):
+            "RESTORE ttl is set in milliseconds on key"
+            serialized_value = '\x00\x03foo\x06\x00\xe5\xa4Q[\xb8\x94\x86\x04'
+            self.client.restore('a', serialized_value, ttl=10000)
+            ttl = self.client.ttl('a')
+            self.assert_(1 < ttl <= 10)
 
     ## BINARY SAFE
     # TODO add more tests
