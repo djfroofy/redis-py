@@ -407,14 +407,18 @@ class StrictRedis(object):
         """
         params = [key]
         if start and end:
-          params.append(start)
-          params.append(end)
+            params.append(start)
+            params.append(end)
         elif (start and not end) or (end and not start):
-          raise RedisError("Both start and end must be specified")
+            raise RedisError("Both start and end must be specified")
         return self.execute_command('BITCOUNT', *params)
 
-    def bitop(self, op, dest, *keys):
-        return self.execute_command('BITOP', op, dest, *keys)
+    def bitop(self, operation, destkey, *keys):
+        """
+        Perform a bitwise operation between multiple keys (containing string
+        values) and store the result in the destination key.
+        """
+        return self.execute_command('BITOP', operation, destkey, *keys)
 
 
     def decr(self, name, amount=1):
