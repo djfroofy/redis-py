@@ -434,7 +434,12 @@ class StrictRedis(object):
     __contains__ = exists
 
     def expire(self, name, time):
-        "Set an expire flag on key ``name`` for ``time`` seconds"
+        """
+        Set an expire flag on key ``name`` for ``time`` seconds. ``time``
+        can be represented by an integer or a Python timedelta object.
+        """
+        if isinstance(time, datetime.timedelta):
+            time = int(time.total_seconds())
         return self.execute_command('EXPIRE', name, time)
 
     def expireat(self, name, when):
@@ -545,9 +550,12 @@ class StrictRedis(object):
 
     def setex(self, name, time, value):
         """
-        Set the value of key ``name`` to ``value``
-        that expires in ``time`` seconds
+        Set the value of key ``name`` to ``value`` that expires in ``time``
+        seconds. ``time`` can be represented by an integer or a Python
+        timedelta object.
         """
+        if isinstance(time, datetime.timedelta):
+            time = int(time.total_seconds())
         return self.execute_command('SETEX', name, time, value)
 
     def setnx(self, name, value):
@@ -1136,6 +1144,54 @@ class StrictRedis(object):
         """
         return self.execute_command('PUBLISH', channel, message)
 
+    def script_load(self, script):
+        """
+        Load ``script`` into the scripts cache.
+        Returns the SHA1 sum of the script added to the scripts cache.
+        """
+        return self.execute_command('SCRIPT', 'LOAD', script)
+
+    def eval(self, script, keys=(), args=()):
+        """
+        Evaluate a ``script`` with given ``keys`` and ``args``.
+        Returns the value returned from the LUA ``script`` converted to Redis
+        type.
+        """
+        arguments = tuple(keys) + tuple(args)
+        return self.execute_command('EVAL', script, len(keys), *arguments)
+
+    def evalsha(self, sha1, keys=(), args=()):
+        """
+        Evaluate a loaded script by it's `sha1` with given ``keys`` and
+        ``args``.  Returns the value returned from the LUA ``script`` converted
+        to Redis type.
+        """
+        arguments = tuple(keys) + tuple(args)
+        return self.execute_command('EVALSHA', sha1, len(keys), *arguments)
+
+    def script_exists(self, *sha1s):
+        """
+        Get information about the existense of scripts in the scripts cache
+        with a list of ``sha1s``.
+        Return list of booleans where ``True`` indicates the corresponding
+        script exists and ``False`` indicates it does not exist.
+        """
+        response = self.execute_command('SCRIPT', 'EXISTS', *sha1s)
+        return [bool(exists) for exists in response]
+
+    def script_flush(self):
+        """
+        Flush the scripts cache.
+        """
+        self.execute_command('SCRIPT', 'FLUSH')
+
+
+    def script_kill(self):
+        """
+        Kill the currently running script.
+        """
+        self.execute_command('SCRIPT', 'KILL')
+
 
 class Redis(StrictRedis):
     """
@@ -1168,9 +1224,12 @@ class Redis(StrictRedis):
 
     def setex(self, name, value, time):
         """
-        Set the value of key ``name`` to ``value``
-        that expires in ``time`` seconds
+        Set the value of key ``name`` to ``value`` that expires in ``time``
+        seconds. ``time`` can be represented by an integer or a Python
+        timedelta object.
         """
+        if isinstance(time, datetime.timedelta):
+            time = int(time.total_seconds())
         return self.execute_command('SETEX', name, time, value)
 
     def lrem(self, name, value, num=0):
@@ -1249,11 +1308,20 @@ class PubSub(object):
 
     def reset(self):
         if self.connection:
+            self.connection.disconnect()
             self.connection_pool.release(self.connection)
             self.connection = None
 
+    def close(self):
+        self.reset()
+
     def execute_command(self, *args, **kwargs):
         "Execute a publish/subscribe command"
+
+        # NOTE: don't parse the response in this function. it could pull a
+        # legitmate message off the stack if the connection is already
+        # subscribed to one or more channels
+
         if self.connection is None:
             self.connection = self.connection_pool.get_connection(
                 'pubsub',
@@ -1262,7 +1330,6 @@ class PubSub(object):
         connection = self.connection
         try:
             connection.send_command(*args)
-            return self.parse_response()
         except ConnectionError:
             connection.disconnect()
             # Connect manually here. If the Redis server is down, this will
@@ -1275,7 +1342,6 @@ class PubSub(object):
             for pattern in self.patterns:
                 self.psubscribe(pattern)
             connection.send_command(*args)
-            return self.parse_response()
 
     def parse_response(self):
         "Parse the response from a publish/subscribe command"
@@ -1334,7 +1400,7 @@ class PubSub(object):
 
     def listen(self):
         "Listen for messages on channels this client has been subscribed to"
-        while self.subscription_count:
+        while self.subscription_count or self.channels or self.patterns:
             r = self.parse_response()
             if r[0] == 'pmessage':
                 msg = {
